@@ -1,0 +1,15 @@
+# Secrets — never commit these
+.env
+credentials.json
+
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Logs
+payment.log
+
+# Mac
+.DS_Store

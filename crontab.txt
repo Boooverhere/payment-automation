@@ -1,0 +1,2 @@
+0 9 * * * /Users/macbookair/Desktop/subscription_automation/run.sh >> /Users/macbookair/Desktop/subscription_automation/automation.log 2>&1
+0 * * * * /Users/macbookair/Desktop/payment_automation/run.sh >> /Users/macbookair/Desktop/payment_automation/payment.log 2>&1
