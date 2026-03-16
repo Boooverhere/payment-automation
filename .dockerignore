@@ -1,0 +1,25 @@
+# Secrets — never bake into the image
+.env
+credentials.json
+
+# Python artifacts
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+
+# Git
+.git
+.gitignore
+
+# Dev / test files
+test_*.py
+send_manual.py
+*.md
+
+# Mac
+.DS_Store

@@ -1,0 +1,5 @@
+# Payment Automation — runs every hour at :00
+# Redirect output to PID 1 so Docker captures it in logs
+0 * * * * root python3 /app/app.py >> /proc/1/fd/1 2>/proc/1/fd/2
+
+# Required empty line at end of crontab
