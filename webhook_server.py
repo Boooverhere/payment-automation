@@ -42,16 +42,19 @@ def _verify_signature(payload: bytes, signature: str) -> bool:
 
     expected = hmac.new(WEBHOOK_SECRET.encode(), payload, hashlib.sha256).digest()
     expected_b64 = base64.b64encode(expected).decode()
-    logger.debug(f"Signature received : '{signature[:20]}...'")
-    logger.debug(f"Signature expected : '{expected_b64[:20]}...'")
     return hmac.compare_digest(expected_b64, signature)
 
 
 @app.route("/webhook/order", methods=["POST"])
 def order_webhook():
     # 1. Verify the request is genuinely from WooCommerce
-    logger.debug(f"Headers received: {dict(request.headers)}")
     signature = request.headers.get("X-WC-Webhook-Signature", "")
+
+    if not signature:
+        # WooCommerce sends an unsigned ping when saving the webhook — just acknowledge it
+        logger.info("Webhook ping received (no signature) — acknowledged")
+        return jsonify({"ok": True, "note": "ping"}), 200
+
     if not _verify_signature(request.data, signature):
         logger.warning("Webhook received with invalid signature — rejected")
         return jsonify({"error": "invalid signature"}), 401
