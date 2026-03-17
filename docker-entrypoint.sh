@@ -10,7 +10,9 @@ cron
 
 echo "Payment automation container started."
 echo "  - Cron running for reminder emails (24h / 48h / 72h)"
-echo "  - Webhook server starting for instant invoice delivery"
+echo "  - Webhook server starting via Gunicorn"
 
-# Start Flask webhook server in the foreground (PID 1)
-exec python3 webhook_server.py
+# Start Gunicorn as the webhook server in the foreground (PID 1)
+# 2 workers, 30s timeout, binds to internal port 8000
+exec su -s /bin/sh appuser -c \
+    "gunicorn --workers 2 --timeout 30 --bind 0.0.0.0:8000 webhook_server:app"
