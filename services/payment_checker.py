@@ -86,7 +86,20 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
             skipped += 1
             continue
 
-        # Mark as abandoned if past 72h and final reminder already sent
+        # Use invoice_sent date for reminder timing, not order creation date.
+        # This ensures the customer gets the full 24/48/72h window from when
+        # they received the invoice, even if the invoice was sent late.
+        invoice_sent_str = tracked_row.get(COL_INVOICE_SENT, "")
+        if invoice_sent_str:
+            try:
+                invoice_date = date.fromisoformat(invoice_sent_str)
+                days_since_invoice = (date.today() - invoice_date).days
+                hours_since_invoice = days_since_invoice * 24
+                stage = get_reminder_stage(hours_since_invoice)
+            except ValueError:
+                pass  # fall back to order-date-based stage already calculated
+
+        # Mark as abandoned if past 72h since invoice and final reminder already sent
         if hours_elapsed > 72 and current_stage >= 3:
             logger.info(f"Order {order_id} | No payment after 72h — marking abandoned")
             if not dry_run:

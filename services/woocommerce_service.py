@@ -78,5 +78,5 @@ def _parse_order(order: dict) -> dict:
         "currency":    order.get("currency", "USD"),
         "plan":        plan,
         "country":     billing.get("country", ""),
-        "order_date":  order.get("date_created", ""),
+        "order_date":  order.get("date_created_gmt", order.get("date_created", "")),
     }
