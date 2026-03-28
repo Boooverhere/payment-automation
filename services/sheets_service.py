@@ -36,7 +36,12 @@ def get_sheet():
 
 def get_all_tracked_orders(worksheet) -> list[dict]:
     """Returns all rows in the sheet as a list of dictionaries."""
-    records = worksheet.get_all_records()
+    expected = [
+        COL_ORDER_ID, COL_NAME, COL_EMAIL, COL_AMOUNT, COL_PLAN,
+        COL_COUNTRY, COL_ORDER_DATE, COL_INVOICE_SENT, COL_LAST_REMINDER,
+        COL_STAGE, COL_STATUS
+    ]
+    records = worksheet.get_all_records(expected_headers=expected)
     logger.info(f"Loaded {len(records)} tracked order(s) from sheet")
     return records
 

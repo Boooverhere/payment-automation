@@ -19,10 +19,10 @@ import os
 from datetime import date
 from flask import Flask, request, jsonify
 
-from services.sheets_service import get_sheet, add_order_to_sheet, get_all_tracked_orders
+from services.sheets_service import get_sheet, add_order_to_sheet, get_all_tracked_orders, update_order_status
 from services.email_service import send_email
 from services.woocommerce_service import _parse_order
-from templates.email_templates import get_email_content
+from templates.email_templates import get_email_content, get_confirmation_email
 from utils.logger import get_logger
 from config import WEBHOOK_SECRET, COL_ORDER_ID
 
@@ -106,6 +106,64 @@ def order_webhook():
 
     except Exception as e:
         logger.error(f"Webhook | Order {order_id} | Unexpected error: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/webhook/order-completed", methods=["POST"])
+def order_completed_webhook():
+    # 1. Verify signature
+    signature = request.headers.get("X-WC-Webhook-Signature", "")
+
+    if not signature:
+        logger.info("Completed webhook ping received (no signature) — acknowledged")
+        return jsonify({"ok": True, "note": "ping"}), 200
+
+    if not _verify_signature(request.data, signature):
+        logger.warning("Completed webhook received with invalid signature — rejected")
+        return jsonify({"error": "invalid signature"}), 401
+
+    # 2. Parse order
+    raw_order = request.get_json(silent=True)
+    if not raw_order:
+        return jsonify({"error": "empty or invalid JSON"}), 400
+
+    # Only act on completed status
+    if raw_order.get("status") != "completed":
+        return jsonify({"ok": True, "note": "not completed"}), 200
+
+    order    = _parse_order(raw_order)
+    order_id = order["order_id"]
+    email    = order["email"]
+
+    logger.info(f"Order completed webhook | Order {order_id} | {email}")
+
+    if not email:
+        logger.warning(f"Order completed | Order {order_id} | No email — skipping")
+        return jsonify({"ok": True, "note": "no email"}), 200
+
+    try:
+        worksheet = get_sheet()
+
+        # 3. Send confirmation email
+        content = get_confirmation_email(
+            name=order["name"],
+            order_id=order_id,
+            amount=order["amount"],
+            plan=order["plan"],
+        )
+        success = send_email(email, content["subject"], content["body"])
+
+        if success:
+            # 4. Mark as paid in the sheet
+            update_order_status(worksheet, order_id, "paid")
+            logger.info(f"Order completed | Order {order_id} | Confirmation sent → {email}")
+            return jsonify({"ok": True}), 200
+        else:
+            logger.error(f"Order completed | Order {order_id} | Email send failed")
+            return jsonify({"error": "email failed"}), 500
+
+    except Exception as e:
+        logger.error(f"Order completed | Order {order_id} | Unexpected error: {e}")
         return jsonify({"error": str(e)}), 500
 
 

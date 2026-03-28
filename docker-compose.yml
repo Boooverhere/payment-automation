@@ -1,0 +1,78 @@
+services:
+
+  # --- Nginx: HTTPS reverse proxy ---
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certbot/www:/var/www/certbot:ro
+      - ./certbot/conf:/etc/letsencrypt:ro
+    depends_on:
+      - payment
+    networks:
+      - public
+      - internal
+    restart: unless-stopped
+
+  # --- Certbot: auto SSL certificate via Let's Encrypt ---
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./certbot/www:/var/www/certbot
+      - ./certbot/conf:/etc/letsencrypt
+    # Renew certificate every 12 hours (only renews when close to expiry)
+    entrypoint: >
+      /bin/sh -c "trap exit TERM; while :; do
+        certbot renew --webroot --webroot-path=/var/www/certbot --quiet;
+        sleep 12h & wait $${!};
+      done"
+    networks:
+      - internal
+
+  # --- Payment automation: webhook server + cron reminders ---
+  payment:
+    build:
+      context: ../payment_automation
+    env_file:
+      - ../payment_automation/.env
+    volumes:
+      - ../payment_automation/credentials.json:/app/credentials.json:ro
+    expose:
+      - "8000"        # internal only — NOT published to host
+    networks:
+      - public
+      - internal
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # --- Subscription automation: daily renewal reminder emails ---
+  subscription:
+    build:
+      context: ../subscription_automation
+    env_file:
+      - ../subscription_automation/.env
+    volumes:
+      - ../subscription_automation/credentials.json:/app/credentials.json:ro
+    networks:
+      - public
+      - internal
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  public:
+    driver: bridge
+  internal:
+    driver: bridge
+    internal: true   # no direct internet access for app containers
