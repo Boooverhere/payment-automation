@@ -61,7 +61,7 @@ def add_order_to_sheet(worksheet, order: dict, invoice_sent: str, stage: int):
         str(stage),
         "pending",
     ]
-    worksheet.append_row(new_row)
+    worksheet.append_row(new_row, table_range='A1')
     logger.info(f"Added order {order['order_id']} to sheet")
 
 
