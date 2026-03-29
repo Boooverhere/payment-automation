@@ -35,11 +35,11 @@ services:
   # --- Payment automation: webhook server + cron reminders ---
   payment:
     build:
-      context: ../payment_automation
+      context: .
     env_file:
-      - ../payment_automation/.env
+      - ./.env
     volumes:
-      - ../payment_automation/credentials.json:/app/credentials.json:ro
+      - ./credentials.json:/app/credentials.json:ro
     expose:
       - "8000"        # internal only — NOT published to host
     networks:
@@ -55,11 +55,11 @@ services:
   # --- Subscription automation: daily renewal reminder emails ---
   subscription:
     build:
-      context: ../subscription_automation
+      context: ../subscription-automation
     env_file:
-      - ../subscription_automation/.env
+      - ../subscription-automation/.env
     volumes:
-      - ../subscription_automation/credentials.json:/app/credentials.json:ro
+      - ../subscription-automation/credentials.json:/app/credentials.json:ro
     networks:
       - public
       - internal
