@@ -24,7 +24,7 @@ from services.email_service import send_email
 from services.woocommerce_service import _parse_order
 from templates.email_templates import get_email_content, get_confirmation_email
 from utils.logger import get_logger
-from config import WEBHOOK_SECRET, COL_ORDER_ID
+from config import WEBHOOK_SECRET, COL_ORDER_ID, COL_STATUS
 
 logger = get_logger(__name__)
 app = Flask(__name__)
@@ -144,7 +144,16 @@ def order_completed_webhook():
     try:
         worksheet = get_sheet()
 
-        # 3. Send confirmation email
+        # 3. Skip if already marked paid (prevents duplicate confirmation emails)
+        tracked = get_all_tracked_orders(worksheet)
+        for row in tracked:
+            if str(row.get(COL_ORDER_ID)) == str(order_id):
+                if str(row.get(COL_STATUS, "")).lower() == "paid":
+                    logger.info(f"Order completed | Order {order_id} | Already paid — skipping")
+                    return jsonify({"ok": True, "note": "already paid"}), 200
+                break
+
+        # 4. Send confirmation email
         content = get_confirmation_email(
             name=order["name"],
             order_id=order_id,
