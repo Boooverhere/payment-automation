@@ -15,8 +15,11 @@ The hourly cron (app.py) still runs as a fallback for:
 import hashlib
 import hmac
 import base64
+import json
 import os
+import time
 from datetime import date
+from pathlib import Path
 from flask import Flask, request, jsonify
 
 from services.sheets_service import get_sheet, add_order_to_sheet, get_all_tracked_orders, update_order_status
@@ -24,7 +27,7 @@ from services.email_service import send_email
 from services.woocommerce_service import _parse_order
 from templates.email_templates import get_email_content, get_confirmation_email
 from utils.logger import get_logger
-from config import WEBHOOK_SECRET, COL_ORDER_ID, COL_STATUS
+from config import WEBHOOK_SECRET, BREVO_WEBHOOK_TOKEN, COL_ORDER_ID, COL_STATUS
 
 logger = get_logger(__name__)
 app = Flask(__name__)
@@ -174,6 +177,74 @@ def order_completed_webhook():
     except Exception as e:
         logger.error(f"Order completed | Order {order_id} | Unexpected error: {e}")
         return jsonify({"error": str(e)}), 500
+
+
+PENDING_FILE      = Path("/app/click_pending.json")
+CHECKOUT_LINKS    = {"add-to-cart=2710", "add-to-cart=2711"}
+
+
+def _verify_brevo_token(auth_header: str) -> bool:
+    if not BREVO_WEBHOOK_TOKEN:
+        logger.warning("BREVO_WEBHOOK_TOKEN not set — skipping token verification")
+        return True
+    expected = f"Bearer {BREVO_WEBHOOK_TOKEN}"
+    return hmac.compare_digest(auth_header, expected)
+
+
+def _append_pending(email: str):
+    entries = []
+    if PENDING_FILE.exists():
+        with open(PENDING_FILE) as f:
+            entries = json.load(f)
+
+    # Skip if already pending and follow-up not yet sent
+    for e in entries:
+        if e["email"].lower() == email.lower() and not e.get("follow_up_sent"):
+            logger.info(f"Click webhook | {email} | Already pending — skipping duplicate")
+            return
+
+    entries.append({
+        "email":           email,
+        "clicked_at":      time.time(),
+        "follow_up_sent":  False,
+    })
+
+    with open(PENDING_FILE, "w") as f:
+        json.dump(entries, f, indent=2)
+
+    logger.info(f"Click webhook | {email} | Stored as pending follow-up")
+
+
+@app.route("/webhook/email-click", methods=["POST"])
+def email_click_webhook():
+    # 1. Verify Bearer token
+    auth = request.headers.get("Authorization", "")
+    if not _verify_brevo_token(auth):
+        logger.warning("Brevo click webhook | Invalid token — rejected")
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "invalid JSON"}), 400
+
+    event = data.get("event", "")
+    email = data.get("email", "").strip()
+    link  = data.get("link", "")
+
+    if event != "click":
+        return jsonify({"ok": True, "note": "not a click event"}), 200
+
+    if not email:
+        return jsonify({"ok": True, "note": "no email in payload"}), 200
+
+    # 2. Only care about checkout link clicks
+    if not any(ck in link for ck in CHECKOUT_LINKS):
+        logger.info(f"Click webhook | {email} | Non-checkout link — ignored")
+        return jsonify({"ok": True, "note": "non-checkout link"}), 200
+
+    # 3. Store for follow-up check
+    _append_pending(email)
+    return jsonify({"ok": True}), 200
 
 
 @app.route("/health", methods=["GET"])

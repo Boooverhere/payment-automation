@@ -1,5 +1,7 @@
 # Payment Automation — runs every hour at :00
-# Redirect output to PID 1 so Docker captures it in logs
 0 * * * * root cd /app && /usr/local/bin/python3 app.py >> /proc/1/fd/1 2>/proc/1/fd/2
+
+# Abandoned checkout checker — runs every hour at :30
+30 * * * * root cd /app && /usr/local/bin/python3 check_abandoned.py >> /proc/1/fd/1 2>/proc/1/fd/2
 
 # Required empty line at end of crontab

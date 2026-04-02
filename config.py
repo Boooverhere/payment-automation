@@ -64,8 +64,9 @@ EUROPEAN_COUNTRIES = {
 }
 
 # --- Webhook ---
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET")   # Set in WooCommerce webhook settings
-WEBHOOK_PORT   = int(os.getenv("WEBHOOK_PORT", "8000"))
+WEBHOOK_SECRET      = os.getenv("WEBHOOK_SECRET")        # WooCommerce webhook HMAC secret
+BREVO_WEBHOOK_TOKEN = os.getenv("BREVO_WEBHOOK_TOKEN")   # Bearer token for Brevo click events
+WEBHOOK_PORT        = int(os.getenv("WEBHOOK_PORT", "8000"))
 
 # --- Reminder schedule (hours after order) ---
 REMINDER_HOURS = [24, 48, 72]
