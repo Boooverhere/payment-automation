@@ -38,7 +38,7 @@ def _payment_buttons_html() -> str:
                 <a href="{REVOLUT_LINK}" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
                    background-color:#000000; color:#ffffff; text-decoration:none; font-size:16px;
                    font-weight:bold; padding:14px 20px; border-radius:8px;" target="_blank">
-                   Pay with Revolut
+                   💳 Pay with Credit Card
                 </a>
             </td>
         </tr>
