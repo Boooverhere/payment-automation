@@ -8,7 +8,7 @@ from services.sheets_service import (
     update_reminder_info, update_order_status
 )
 from templates.email_templates import get_email_content
-from config import COL_ORDER_ID, COL_STAGE, COL_STATUS
+from config import COL_ORDER_ID, COL_STAGE, COL_STATUS, COL_INVOICE_SENT
 
 logger = get_logger(__name__)
 
