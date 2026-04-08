@@ -10,11 +10,61 @@ import json
 import time
 from pathlib import Path
 
+from urllib.parse import urlparse, parse_qs
+
 from utils.logger import get_logger
 from services.sheets_service import get_sheet, get_all_tracked_orders
 from services.email_service import send_email
+from services.woocommerce_service import get_product
 from templates.abandoned_email import get_abandoned_email
 from config import COL_EMAIL, COL_ORDER_DATE
+
+# Hardcoded product map — avoids WooCommerce API dependency
+# Keyed by the add-to-cart product ID as a string
+PRODUCT_MAP = {
+    # Standard plans
+    "2708": {
+        "name":  "1 Month Subscription",
+        "price": "14.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2023/05/4425137731.png",
+    },
+    "2709": {
+        "name":  "3 Months Subscription",
+        "price": "29.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2023/05/4489509824.png",
+    },
+    "2710": {
+        "name":  "6 Months Subscription",
+        "price": "39.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2023/05/4489509831.png",
+    },
+    "2711": {
+        "name":  "12 Months Subscription",
+        "price": "55.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2023/05/4489506467.png",
+    },
+    # Premium plans
+    "714": {
+        "name":  "1 Month Premium Subscription",
+        "price": "17.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2022/10/1-Month.webp",
+    },
+    "719": {
+        "name":  "3 Months Premium Subscription",
+        "price": "34.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2022/10/3-months.webp",
+    },
+    "723": {
+        "name":  "6 Months Premium Subscription",
+        "price": "49.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2022/10/6-months.webp",
+    },
+    "728": {
+        "name":  "12 Months Premium Subscription",
+        "price": "79.99",
+        "image": "https://iptvsup.com/wp-content/uploads/2022/10/1-year.webp",
+    },
+}
 
 logger = get_logger(__name__)
 
@@ -100,7 +150,21 @@ def run():
             continue
 
         # No order → send follow-up
-        content = get_abandoned_email()
+        checkout_url = entry.get("checkout_url", "")
+        product = {}
+        if checkout_url:
+            qs = parse_qs(urlparse(checkout_url).query)
+            product_ids = qs.get("add-to-cart", [])
+            if product_ids:
+                pid = product_ids[0]
+                product = PRODUCT_MAP.get(pid) or get_product(pid)
+
+        content = get_abandoned_email(
+            checkout_url=checkout_url,
+            product_name=product.get("name", ""),
+            product_price=product.get("price", ""),
+            product_image=product.get("image", ""),
+        )
         success = send_email(
             to_email=email,
             subject=content["subject"],
