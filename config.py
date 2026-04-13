@@ -1,3 +1,4 @@
+
 import os
 from dotenv import load_dotenv
 
@@ -66,7 +67,11 @@ EUROPEAN_COUNTRIES = {
 # --- Webhook ---
 WEBHOOK_SECRET      = os.getenv("WEBHOOK_SECRET")        # WooCommerce webhook HMAC secret
 BREVO_WEBHOOK_TOKEN = os.getenv("BREVO_WEBHOOK_TOKEN")   # Bearer token for Brevo click events
+CHECKOUT_SECRET     = os.getenv("CHECKOUT_SECRET")        # Token for /webhook/checkout-started
 WEBHOOK_PORT        = int(os.getenv("WEBHOOK_PORT", "8000"))
+
+# --- Brevo API (same key as SMTP_PASSWORD) ---
+BREVO_API_KEY = os.getenv("BREVO_API_KEY", SMTP_PASSWORD)
 
 # --- Reminder schedule (hours after order) ---
 REMINDER_HOURS = [24, 48, 72]

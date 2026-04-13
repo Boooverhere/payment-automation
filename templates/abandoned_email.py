@@ -120,7 +120,7 @@ def get_abandoned_email(
                 Still thinking it over?
             </h2>
             <p style="font-size: 15px; line-height: 1.7; margin: 0 0 12px 0; color: #444;">
-                You were this close to completing your order. Your <strong>{discount if discount else "exclusive discount"}</strong> is still waiting for you — just pick up where you left off.
+                {"You were this close to completing your order. Your <strong>" + discount + "</strong> is still waiting for you — just pick up where you left off." if discount else "You were this close to completing your order — just pick up where you left off."}
             </p>
             <p style="font-size: 15px; line-height: 1.7; margin: 0; color: #444;">
                 Any questions? Just reply or reach out on WhatsApp.

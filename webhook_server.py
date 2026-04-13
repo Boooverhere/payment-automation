@@ -27,7 +27,7 @@ from services.email_service import send_email
 from services.woocommerce_service import _parse_order
 from templates.email_templates import get_email_content, get_confirmation_email
 from utils.logger import get_logger
-from config import WEBHOOK_SECRET, BREVO_WEBHOOK_TOKEN, COL_ORDER_ID, COL_STATUS
+from config import WEBHOOK_SECRET, BREVO_WEBHOOK_TOKEN, CHECKOUT_SECRET, COL_ORDER_ID, COL_STATUS
 
 logger = get_logger(__name__)
 app = Flask(__name__)
@@ -180,7 +180,10 @@ def order_completed_webhook():
 
 
 PENDING_FILE      = Path("/app/click_pending.json")
-CHECKOUT_LINKS    = {"add-to-cart=2710", "add-to-cart=2711"}
+CHECKOUT_LINKS    = {
+    "add-to-cart=2708", "add-to-cart=2709", "add-to-cart=2710", "add-to-cart=2711",
+    "add-to-cart=714",  "add-to-cart=719",  "add-to-cart=723",  "add-to-cart=728",
+}
 
 
 def _verify_brevo_token(auth_header: str) -> bool:
@@ -191,7 +194,7 @@ def _verify_brevo_token(auth_header: str) -> bool:
     return hmac.compare_digest(auth_header, expected)
 
 
-def _append_pending(email: str):
+def _append_pending(email: str, checkout_url: str = ""):
     entries = []
     if PENDING_FILE.exists():
         with open(PENDING_FILE) as f:
@@ -207,6 +210,7 @@ def _append_pending(email: str):
         "email":           email,
         "clicked_at":      time.time(),
         "follow_up_sent":  False,
+        "checkout_url":    checkout_url,
     })
 
     with open(PENDING_FILE, "w") as f:
@@ -243,7 +247,42 @@ def email_click_webhook():
         return jsonify({"ok": True, "note": "non-checkout link"}), 200
 
     # 3. Store for follow-up check
-    _append_pending(email)
+    _append_pending(email, checkout_url=link)
+    return jsonify({"ok": True}), 200
+
+
+@app.route("/webhook/checkout-started", methods=["POST"])
+def checkout_started_webhook():
+    """
+    Receives abandoned checkout signals from two sources:
+      1. Brevo automation "Call a webhook" step — payload: {email, ...contact attrs}
+      2. WooCommerce JS snippet — payload: {email, checkout_url}
+
+    Stores the contact in click_pending.json so the abandoned checker
+    can follow up after 2 hours if no order is placed.
+    """
+    # Validate secret token passed as ?token= query param
+    token = request.args.get("token", "")
+    if CHECKOUT_SECRET and not hmac.compare_digest(token, CHECKOUT_SECRET):
+        logger.warning("Checkout-started webhook | Invalid token — rejected")
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "invalid JSON"}), 400
+
+    # Brevo sends EMAIL uppercase in some payloads; JS snippet sends lowercase
+    email = (
+        data.get("email") or data.get("EMAIL") or ""
+    ).strip().lower()
+
+    if not email or "@" not in email:
+        return jsonify({"ok": True, "note": "no valid email"}), 200
+
+    # checkout_url comes from JS snippet; Brevo doesn't know the cart product
+    checkout_url = data.get("checkout_url", "").strip() or "https://www.iptvsup.com/checkout/"
+
+    _append_pending(email, checkout_url=checkout_url)
     return jsonify({"ok": True}), 200
 
 

@@ -55,6 +55,31 @@ def get_pending_orders() -> list[dict]:
     return [_parse_order(o) for o in orders]
 
 
+def get_product(product_id: str) -> dict:
+    """
+    Fetches a single product from WooCommerce by ID.
+    Returns name, price, and image URL.
+    """
+    endpoint = f"{WC_STORE_URL}/wp-json/wc/v3/products/{product_id}"
+    params = {
+        "consumer_key":    WC_CONSUMER_KEY,
+        "consumer_secret": WC_CONSUMER_SECRET,
+    }
+    try:
+        response = requests.get(endpoint, params=params, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        images = data.get("images", [])
+        return {
+            "name":  data.get("name", ""),
+            "price": data.get("price", ""),
+            "image": images[0].get("src", "") if images else "",
+        }
+    except Exception as e:
+        logger.error(f"Could not fetch product {product_id}: {e}")
+        return {"name": "", "price": "", "image": ""}
+
+
 def _parse_order(order: dict) -> dict:
     """
     Extracts only the fields we need from a raw WooCommerce order.

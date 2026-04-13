@@ -1,43 +1,46 @@
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
+import requests
 from utils.logger import get_logger
-from config import SENDER_EMAIL, SENDER_NAME, SMTP_LOGIN, SMTP_PASSWORD, SMTP_HOST, SMTP_PORT
+from config import SENDER_EMAIL, SENDER_NAME, BREVO_API_KEY
 
 logger = get_logger(__name__)
+
+BREVO_API_URL = "https://api.brevo.com/v3/smtp/email"
 
 
 def send_email(to_email: str, subject: str, body_html: str) -> bool:
     """
-    Sends an HTML email via SMTP.
+    Sends an HTML email via Brevo Transactional API.
+    Gives full open/click/delivery tracking in the Brevo dashboard.
     Returns True if sent successfully, False if it failed.
     """
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = f"{SENDER_NAME} <{SENDER_EMAIL}>"
-    msg["To"]      = to_email
-
-    msg.attach(MIMEText(body_html, "html"))
+    payload = {
+        "sender":      {"name": SENDER_NAME, "email": SENDER_EMAIL},
+        "to":          [{"email": to_email}],
+        "subject":     subject,
+        "htmlContent": body_html,
+    }
 
     try:
-        if SMTP_PORT == 465:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT) as server:
-                server.login(SMTP_LOGIN, SMTP_PASSWORD)
-                server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-                server.ehlo()
-                server.starttls()
-                server.login(SMTP_LOGIN, SMTP_PASSWORD)
-                server.sendmail(SENDER_EMAIL, to_email, msg.as_string())
+        response = requests.post(
+            BREVO_API_URL,
+            json=payload,
+            headers={
+                "api-key":      BREVO_API_KEY,
+                "Content-Type": "application/json",
+            },
+            timeout=15,
+        )
 
-        logger.info(f"Email sent → {to_email} | Subject: {subject}")
-        return True
+        if response.status_code in (200, 201):
+            logger.info(f"Email sent → {to_email} | Subject: {subject}")
+            return True
 
-    except smtplib.SMTPAuthenticationError:
-        logger.error("Authentication failed. Check SENDER_EMAIL and SMTP_PASSWORD in .env")
+        logger.error(
+            f"Brevo API error → {to_email} | "
+            f"Status: {response.status_code} | {response.text}"
+        )
         return False
 
-    except smtplib.SMTPException as e:
+    except requests.RequestException as e:
         logger.error(f"Failed to send email to {to_email}: {e}")
         return False
