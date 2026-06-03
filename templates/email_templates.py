@@ -12,7 +12,7 @@ Stages:
 """
 
 from config import (
-    PAYPAL_LINK, REVOLUT_LINK, INTERAC_EMAIL,
+    REVOLUT_LINK, INTERAC_EMAIL,
     BANK_USD, BANK_EUR, BANK_GBP, EUROPEAN_COUNTRIES
 )
 
@@ -21,18 +21,9 @@ WEBSITE_URL = "https://www.iptvsup.com"
 
 
 def _payment_buttons_html() -> str:
-    """PayPal and Revolut buttons — shown to all customers."""
+    """Revolut button — shown to all customers."""
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 28px 0;" width="100%">
-        <tr>
-            <td align="center" style="padding-bottom:12px;">
-                <a href="{PAYPAL_LINK}" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
-                   background-color:#0070ba; color:#ffffff; text-decoration:none; font-size:16px;
-                   font-weight:bold; padding:14px 20px; border-radius:8px;" target="_blank">
-                   Pay with PayPal
-                </a>
-            </td>
-        </tr>
         <tr>
             <td align="center">
                 <a href="{REVOLUT_LINK}" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
