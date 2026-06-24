@@ -17,7 +17,7 @@ from services.sheets_service import get_sheet, get_all_tracked_orders
 from services.email_service import send_email
 from services.woocommerce_service import get_product
 from templates.abandoned_email import get_abandoned_email
-from config import COL_EMAIL, COL_ORDER_DATE
+from config import COL_EMAIL, COL_ORDER_DATE, EXCLUDED_EMAILS
 
 # Hardcoded product map — avoids WooCommerce API dependency
 # Keyed by the add-to-cart product ID as a string
@@ -139,6 +139,12 @@ def run():
 
         # Already sent follow-up — keep for cleanup window
         if sent:
+            updated.append(entry)
+            continue
+
+        if email.lower() in EXCLUDED_EMAILS:
+            logger.info(f"Abandoned checker | {email} | Excluded — skipping")
+            entry["follow_up_sent"] = True
             updated.append(entry)
             continue
 

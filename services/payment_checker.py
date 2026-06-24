@@ -8,7 +8,7 @@ from services.sheets_service import (
     update_reminder_info, update_order_status
 )
 from templates.email_templates import get_email_content
-from config import COL_ORDER_ID, COL_STAGE, COL_STATUS, COL_INVOICE_SENT
+from config import COL_ORDER_ID, COL_STAGE, COL_STATUS, COL_INVOICE_SENT, EXCLUDED_EMAILS
 
 logger = get_logger(__name__)
 
@@ -44,6 +44,11 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
 
         if not email:
             logger.warning(f"Order {order_id} | Skipping — no email")
+            skipped += 1
+            continue
+
+        if email.lower() in EXCLUDED_EMAILS:
+            logger.info(f"Order {order_id} | Skipping — {email} is excluded")
             skipped += 1
             continue
 

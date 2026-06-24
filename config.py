@@ -76,6 +76,11 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY", SMTP_PASSWORD)
 # --- Reminder schedule (hours after order) ---
 REMINDER_HOURS = [24, 48, 72]
 
+# --- Emails to never send to (add lowercase addresses here) ---
+EXCLUDED_EMAILS = {
+    "isaacontheprize@graduate.org",
+}
+
 # --- Sheet column names ---
 COL_ORDER_ID        = "order_id"
 COL_NAME            = "customer_name"
