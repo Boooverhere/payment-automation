@@ -1,7 +1,7 @@
 import requests
 from datetime import datetime, timezone, timedelta
 from utils.logger import get_logger
-from config import WC_STORE_URL, WC_CONSUMER_KEY, WC_CONSUMER_SECRET, INVOICE_PAYMENT_METHODS
+from config import WC_STORE_URL, WC_CONSUMER_KEY, WC_CONSUMER_SECRET, INVOICE_PAYMENT_METHODS, ORDER_LOOKBACK_DAYS
 
 logger = get_logger(__name__)
 
@@ -22,8 +22,8 @@ def get_pending_orders() -> list[dict]:
     while True:
         # Using query string auth instead of Basic Auth
         # (some hosting setups strip the Authorization header)
-        # Only fetch orders from the last 15 days
-        since = (datetime.now(timezone.utc) - timedelta(days=15)).strftime("%Y-%m-%dT%H:%M:%S")
+        # Only fetch recent orders (window covers CANCEL_UNPAID_AFTER_HOURS)
+        since = (datetime.now(timezone.utc) - timedelta(days=ORDER_LOOKBACK_DAYS)).strftime("%Y-%m-%dT%H:%M:%S")
 
         params = {
             "consumer_key":    WC_CONSUMER_KEY,

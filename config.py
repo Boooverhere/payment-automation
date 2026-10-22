@@ -85,7 +85,11 @@ CARD_PENDING_MIN_HOURS  = 1     # give the customer time to finish on PayGate fi
 
 # Cancel the WooCommerce order this many hours after it was placed if it is
 # still unpaid and the final reminder has gone out. None = never cancel.
-CANCEL_UNPAID_AFTER_HOURS = 120
+# Customers sometimes pay weeks later, so keep this generous.
+CANCEL_UNPAID_AFTER_HOURS = 30 * 24
+
+# How far back to look for unpaid orders; must cover the cancel window above.
+ORDER_LOOKBACK_DAYS = 35
 
 # --- Emails to never send to (add lowercase addresses here) ---
 EXCLUDED_EMAILS = {
