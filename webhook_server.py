@@ -24,7 +24,7 @@ from flask import Flask, request, jsonify
 
 from services.sheets_service import get_sheet, add_order_to_sheet, get_all_tracked_orders, update_order_status
 from services.email_service import send_email
-from services.woocommerce_service import _parse_order
+from services.woocommerce_service import _parse_order, is_invoice_order
 from templates.email_templates import get_email_content, get_confirmation_email
 from utils.logger import get_logger
 from config import WEBHOOK_SECRET, BREVO_WEBHOOK_TOKEN, CHECKOUT_SECRET, COL_ORDER_ID, COL_STATUS
@@ -76,6 +76,12 @@ def order_webhook():
     if not email:
         logger.warning(f"Webhook | Order {order_id} | No email — skipping")
         return jsonify({"ok": True, "note": "no email on order"}), 200
+
+    # Venmo / Cash App / Revolut orders pay on PayGate — no invoice. If the
+    # customer abandons that payment, the hourly cron sends a finish-payment email.
+    if not is_invoice_order(order):
+        logger.info(f"Webhook | Order {order_id} | Paid via {order['payment_method']} — no invoice")
+        return jsonify({"ok": True, "note": "not an invoice order"}), 200
 
     # 3. Skip if already tracked (prevents duplicate invoice on retry)
     try:

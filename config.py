@@ -76,6 +76,17 @@ BREVO_API_KEY = os.getenv("BREVO_API_KEY", SMTP_PASSWORD)
 # --- Reminder schedule (hours after order) ---
 REMINDER_HOURS = [24, 48, 72]
 
+# --- Which orders get chased ---
+# Only "Invoice Payment" orders wait for a manual payment. Orders placed with
+# Venmo / Cash App / Revolut (PayGate) are paid instantly; if the customer
+# abandons the PayGate page they stay "pending" and get a finish-payment email.
+INVOICE_PAYMENT_METHODS = {"cod"}
+CARD_PENDING_MIN_HOURS  = 1     # give the customer time to finish on PayGate first
+
+# Cancel the WooCommerce order this many hours after it was placed if it is
+# still unpaid and the final reminder has gone out. None = never cancel.
+CANCEL_UNPAID_AFTER_HOURS = 120
+
 # --- Emails to never send to (add lowercase addresses here) ---
 EXCLUDED_EMAILS = {
     "isaacontheprize@graduate.org",

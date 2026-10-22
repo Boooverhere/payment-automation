@@ -3,14 +3,31 @@ from datetime import date
 from utils.logger import get_logger
 from utils.date_helpers import parse_wc_datetime, hours_since_order, get_reminder_stage
 from services.email_service import send_email
+from services.woocommerce_service import cancel_order, is_invoice_order
 from services.sheets_service import (
     get_all_tracked_orders, add_order_to_sheet,
     update_reminder_info, update_order_status
 )
 from templates.email_templates import get_email_content
-from config import COL_ORDER_ID, COL_STAGE, COL_STATUS, COL_INVOICE_SENT, EXCLUDED_EMAILS
+from config import (
+    REMINDER_HOURS, COL_ORDER_ID, COL_STAGE, COL_STATUS, COL_INVOICE_SENT, EXCLUDED_EMAILS,
+    CARD_PENDING_MIN_HOURS, CANCEL_UNPAID_AFTER_HOURS
+)
 
 logger = get_logger(__name__)
+
+
+def _maybe_cancel(worksheet, order_id: str, hours_elapsed: float, dry_run: bool):
+    """Cancel in WooCommerce once reminders are done, so unpaid orders don't linger as "processing"."""
+    if CANCEL_UNPAID_AFTER_HOURS is None or hours_elapsed < CANCEL_UNPAID_AFTER_HOURS:
+        return
+    if dry_run:
+        logger.info(f"[DRY RUN] Would cancel order {order_id} in WooCommerce ({hours_elapsed:.0f}h unpaid)")
+        return
+    note = f"Cancelled by payment automation: unpaid {hours_elapsed:.0f}h after ordering, all reminders sent."
+    if cancel_order(order_id, note):
+        update_order_status(worksheet, order_id, "cancelled")
+        time.sleep(1)
 
 
 def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
@@ -39,6 +56,8 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
         plan           = order["plan"]
         country        = order["country"]
         order_date_str = order["order_date"]
+        payment_url    = order["payment_url"]
+        kind           = "invoice" if is_invoice_order(order) else "card"
 
         logger.debug(f"Order {order_id} | {name or 'No name'} | {email}")
 
@@ -60,15 +79,27 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
 
         hours_elapsed = hours_since_order(order_date)
         stage         = get_reminder_stage(hours_elapsed)
+
+        if kind == "card" and hours_elapsed < CARD_PENDING_MIN_HOURS:
+            logger.info(f"Order {order_id} | Card payment started {hours_elapsed * 60:.0f} min ago — waiting")
+            skipped += 1
+            continue
         today_str     = date.today().strftime("%Y-%m-%d")
 
         # --- New order — not yet in sheet ---
         if order_id not in tracked_ids:
-            logger.info(f"Order {order_id} | New order — sending invoice ({hours_elapsed:.0f}h old)")
+            # A card payment abandoned days ago is stale: don't start emailing now
+            if kind == "card" and hours_elapsed > REMINDER_HOURS[-1]:
+                logger.info(f"Order {order_id} | Card payment abandoned {hours_elapsed:.0f}h ago — too old to chase")
+                _maybe_cancel(worksheet, order_id, hours_elapsed, dry_run)
+                skipped += 1
+                continue
+            logger.info(f"Order {order_id} | New {kind} order — sending first email ({hours_elapsed:.0f}h old)")
             content = get_email_content(stage=0, name=name, amount=amount,
-                                        plan=plan, order_id=order_id, country=country)
+                                        plan=plan, order_id=order_id, country=country,
+                                        payment_url=payment_url, kind=kind)
             if dry_run:
-                logger.info(f"[DRY RUN] Would send invoice → {email}")
+                logger.info(f"[DRY RUN] Would send first {kind} email → {email}")
                 sent += 1
             else:
                 success = send_email(email, content["subject"], content["body"])
@@ -85,9 +116,10 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
         current_stage = int(tracked_row.get(COL_STAGE) or 0)
         status        = str(tracked_row.get(COL_STATUS, "")).lower()
 
-        # Skip if already abandoned
-        if status == "abandoned":
-            logger.info(f"Order {order_id} | Already abandoned — skipping")
+        # Already abandoned — only thing left is cancelling it in WooCommerce
+        if status in ("abandoned", "cancelled"):
+            logger.info(f"Order {order_id} | Already {status} — no more emails")
+            _maybe_cancel(worksheet, order_id, hours_elapsed, dry_run)
             skipped += 1
             continue
 
@@ -110,6 +142,7 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
             if not dry_run:
                 update_order_status(worksheet, order_id, "abandoned")
                 time.sleep(1)
+            _maybe_cancel(worksheet, order_id, hours_elapsed, dry_run)
             skipped += 1
             continue
 
@@ -120,9 +153,10 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
             continue
 
         # Send reminder
-        logger.info(f"Order {order_id} | Sending stage {stage} reminder ({hours_elapsed:.0f}h elapsed)")
+        logger.info(f"Order {order_id} | Sending stage {stage} {kind} reminder ({hours_elapsed:.0f}h elapsed)")
         content = get_email_content(stage=stage, name=name, amount=amount,
-                                    plan=plan, order_id=order_id, country=country)
+                                    plan=plan, order_id=order_id, country=country,
+                                    payment_url=payment_url, kind=kind)
         if dry_run:
             logger.info(f"[DRY RUN] Would send stage {stage} reminder → {email}")
             sent += 1

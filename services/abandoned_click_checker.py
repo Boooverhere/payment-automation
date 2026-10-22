@@ -15,7 +15,7 @@ from urllib.parse import urlparse, parse_qs
 from utils.logger import get_logger
 from services.sheets_service import get_sheet, get_all_tracked_orders
 from services.email_service import send_email
-from services.woocommerce_service import get_product
+from services.woocommerce_service import get_product, has_order_since
 from templates.abandoned_email import get_abandoned_email
 from config import COL_EMAIL, COL_ORDER_DATE, EXCLUDED_EMAILS
 
@@ -40,7 +40,7 @@ PRODUCT_MAP = {
     },
     "2711": {
         "name":  "12 Months Subscription",
-        "price": "55.99",
+        "price": "59.99",
         "image": "https://iptvsup.com/wp-content/uploads/2023/05/4489506467.png",
     },
     # Premium plans
@@ -86,7 +86,18 @@ def save_pending(entries: list[dict]):
 
 
 def email_ordered_after(email: str, clicked_at: float, orders: list[dict]) -> bool:
-    """Returns True if this email placed an order after the click timestamp."""
+    """
+    Returns True if this email placed an order after the click timestamp.
+    Asks WooCommerce first: Venmo / Cash App / Revolut orders never reach the
+    Payment Tracker sheet, so the sheet alone would miss customers who paid.
+    """
+    import datetime
+    try:
+        since = datetime.datetime.fromtimestamp(clicked_at, tz=datetime.timezone.utc) - datetime.timedelta(minutes=5)
+        if has_order_since(email, since):
+            return True
+    except Exception:
+        logger.warning(f"Abandoned checker | {email} | WooCommerce lookup failed — falling back to sheet")
     for order in orders:
         if order.get(COL_EMAIL, "").strip().lower() != email.lower():
             continue
