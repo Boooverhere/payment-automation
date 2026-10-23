@@ -26,6 +26,16 @@ PAYPAL_LINK      = "https://www.paypal.com/paypalme/basmaa175"
 REVOLUT_LINK     = "https://revolut.me/basmaa93"
 INTERAC_EMAIL    = "elyoussefimehdi@gmail.com"   # Canada only
 
+# --- Per-order Cash App / Venmo links (PayGate links are tied to one customer + amount) ---
+# Orders listed here get Credit Card + Cash App + Venmo buttons in every email,
+# instead of the "Pay instantly" button.
+ORDER_PAYMENT_LINKS = {
+    "5302": {
+        "cashapp": "https://checkout.paygate.sbs/process-payment.php?address=rerEtiDoe3xbPzjJyWBHySKWr8f%2FebtMfyeYUOzmsAMnKIXicUf1BFm8c3EHrSrX%2BOMwbeXXBFTp%2FKMKsZ5Hew%3D%3D&amount=39.99&provider=cashapp&email=Liammarshwood%40minister.com&currency=USD",
+        "venmo":   "https://checkout.paygate.sbs/process-payment.php?address=O3RvGu%2BmECwhSkwdT28vmINZj2Jgb7J2KEqcX67GTBuowXFZOlOXlXhbXqF1x4Bn63mUR2%2BA41nfiSnqHockfQ%3D%3D&amount=39.99&provider=venmo&email=Liammarshwood%40minister.com&currency=USD",
+    },
+}
+
 # --- Bank transfer — USD (USA + rest of world) ---
 BANK_USD = {
     "account_name":   "Mehdi el youssoufi",

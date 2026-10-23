@@ -12,7 +12,7 @@ Stages:
 """
 
 from config import (
-    REVOLUT_LINK, INTERAC_EMAIL,
+    REVOLUT_LINK, INTERAC_EMAIL, ORDER_PAYMENT_LINKS,
     BANK_USD, BANK_EUR, BANK_GBP, EUROPEAN_COUNTRIES
 )
 
@@ -39,21 +39,42 @@ def _pay_now_button_html(payment_url: str) -> str:
     """
 
 
-def _payment_buttons_html() -> str:
-    """Revolut button — shown to all customers."""
+def _button_html(url: str, label: str, color: str, bottom_margin: int) -> str:
     return f"""
-    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 28px 0;" width="100%">
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 {bottom_margin}px 0;" width="100%">
         <tr>
             <td align="center">
-                <a href="{REVOLUT_LINK}" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
-                   background-color:#000000; color:#ffffff; text-decoration:none; font-size:16px;
+                <a href="{url}" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
+                   background-color:{color}; color:#ffffff; text-decoration:none; font-size:16px;
                    font-weight:bold; padding:14px 20px; border-radius:8px;" target="_blank">
-                   💳 Pay with Credit Card
+                   {label}
                 </a>
             </td>
         </tr>
     </table>
     """
+
+
+def _logo_html(src: str, alt: str) -> str:
+    return (f'<img src="{src}" alt="{alt}" width="22" height="22" '
+            f'style="vertical-align:middle; border:0; margin-right:8px;">')
+
+
+def _payment_buttons_html(order_id: str = "") -> str:
+    """Revolut button — shown to all customers. Orders with their own
+    Cash App / Venmo links (ORDER_PAYMENT_LINKS) also get those buttons."""
+    links = ORDER_PAYMENT_LINKS.get(str(order_id))
+    if not links:
+        return _button_html(REVOLUT_LINK, "💳 Pay with Credit Card", "#000000", 28)
+    return (
+        _button_html(REVOLUT_LINK, "💳 Pay with Credit Card", "#000000", 12)
+        + _button_html(links["cashapp"],
+                       _logo_html("https://img.icons8.com/ios-filled/50/ffffff/cash-app.png", "Cash App") + "Pay with Cash App",
+                       "#00d632", 12)
+        + _button_html(links["venmo"],
+                       _logo_html("https://img.icons8.com/ios-filled/50/ffffff/venmo.png", "Venmo") + "Pay with Venmo",
+                       "#008cff", 28)
+    )
 
 
 def _get_bank_for_country(country: str) -> dict:
@@ -219,8 +240,8 @@ def _base_html(name: str, order_id: str, amount: str, country: str,
                                     Complete your payment using one of the methods below:
                                 </p>
 
-                                {_pay_now_button_html(payment_url)}
-                                {_payment_buttons_html()}
+                                {"" if str(order_id) in ORDER_PAYMENT_LINKS else _pay_now_button_html(payment_url)}
+                                {_payment_buttons_html(order_id)}
                                 {interac_block}
                                 {_bank_details_html(country)}
                                 {note_block}
