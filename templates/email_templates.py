@@ -275,7 +275,7 @@ def _base_html(name: str, order_id: str, amount: str, country: str,
                                 {_payment_buttons_html(order_id, country, has_pay_now=bool(payment_url))}
                                 {_paypal_html(order_id)}
                                 {interac_block}
-                                {_bank_details_html(country)}
+                                {"" if country.upper() in ("US", "CA") else _bank_details_html(country)}
                                 {note_block}
 
                                 <p style="margin:0 0 16px 0; font-size:15px; line-height:1.6;">
