@@ -5,6 +5,11 @@ set -e
 # (Cron does not inherit the container's env by default.)
 printenv | grep -v "no_proxy" > /etc/environment
 
+# Cron jobs run as root; create the log file first so it stays writable by
+# appuser (gunicorn can't boot if root created it).
+touch /app/payment.log
+chown appuser:appuser /app/payment.log
+
 # Start cron as a background daemon (handles 24h/48h/72h reminders)
 cron
 
