@@ -23,6 +23,7 @@ SMTP_PORT        = int(os.getenv("SMTP_PORT", "587"))
 
 # --- Payment links ---
 PAYPAL_LINK      = "https://www.paypal.com/paypalme/basmaa175"
+PAYPAL_USERNAME  = "@NajwaBouaziz"                # sent as Friends and Family
 REVOLUT_LINK     = "https://revolut.me/basmaa93"
 INTERAC_EMAIL    = "elyoussefimehdi@gmail.com"   # Canada only
 

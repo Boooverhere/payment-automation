@@ -12,7 +12,7 @@ Stages:
 """
 
 from config import (
-    REVOLUT_LINK, INTERAC_EMAIL, ORDER_PAYMENT_LINKS,
+    REVOLUT_LINK, PAYPAL_USERNAME, INTERAC_EMAIL, ORDER_PAYMENT_LINKS,
     BANK_USD, BANK_EUR, BANK_GBP, EUROPEAN_COUNTRIES
 )
 
@@ -20,9 +20,10 @@ LOGO_URL    = "https://iptvsup.com/wp-content/uploads/2023/04/logo-IPTVSUP_Plan-
 WEBSITE_URL = "https://www.iptvsup.com"
 
 
-def _pay_now_button_html(payment_url: str) -> str:
-    """Link to the order's own WooCommerce payment page (Venmo, Cash App, Revolut)."""
-    if not payment_url:
+def _pay_now_button_html(payment_url: str, country: str) -> str:
+    """Link to the order's own WooCommerce payment page (Venmo / Cash App).
+    Those only work in the US, so other customers don't get the button."""
+    if not payment_url or country.upper() != "US":
         return ""
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 12px 0;" width="100%">
@@ -31,7 +32,7 @@ def _pay_now_button_html(payment_url: str) -> str:
                 <a href="{payment_url}" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
                    background-color:#00a650; color:#ffffff; text-decoration:none; font-size:16px;
                    font-weight:bold; padding:14px 20px; border-radius:8px;" target="_blank">
-                   ⚡ Pay instantly — Venmo, Cash App or Revolut
+                   ⚡ Pay instantly — Venmo or Cash App
                 </a>
             </td>
         </tr>
@@ -60,11 +61,14 @@ def _logo_html(src: str, alt: str) -> str:
             f'style="vertical-align:middle; border:0; margin-right:8px;">')
 
 
-def _payment_buttons_html(order_id: str = "") -> str:
-    """Revolut button — shown to all customers. Orders with their own
-    Cash App / Venmo links (ORDER_PAYMENT_LINKS) also get those buttons."""
+def _payment_buttons_html(order_id: str = "", country: str = "", has_pay_now: bool = False) -> str:
+    """Revolut button — US cards are often declined or sent through identity
+    checks there, so US customers with a pay-now link don't get it. Orders with
+    their own Cash App / Venmo links (ORDER_PAYMENT_LINKS) also get those buttons."""
     links = ORDER_PAYMENT_LINKS.get(str(order_id))
     if not links:
+        if has_pay_now and country.upper() == "US":
+            return ""
         return _button_html(REVOLUT_LINK, "💳 Pay with Credit Card", "#000000", 28)
     return (
         _button_html(REVOLUT_LINK, "💳 Pay with Credit Card", "#000000", 12)
@@ -75,6 +79,33 @@ def _payment_buttons_html(order_id: str = "") -> str:
                        _logo_html("https://img.icons8.com/ios-filled/50/ffffff/venmo.png", "Venmo") + "Pay with Venmo",
                        "#008cff", 28)
     )
+
+
+def _paypal_html(order_id: str) -> str:
+    """PayPal section — manual payment to the PayPal username as Friends and Family."""
+    return f"""
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation"
+           style="border:1px solid #e9ecef; border-radius:8px; overflow:hidden; margin:0 0 22px 0;" width="100%">
+        <tr>
+            <td style="padding:14px 12px; background-color:#f8f9fb; border-bottom:1px solid #e9ecef;
+                       font-size:16px; font-weight:700; color:#111111;">
+                Pay with PayPal
+            </td>
+        </tr>
+        <tr>
+            <td style="padding:16px 12px; font-size:15px; line-height:1.8; word-break:break-word;">
+                <strong>Send to:</strong> {PAYPAL_USERNAME}<br/>
+                <strong>Note:</strong> Order #{order_id}
+                <div style="margin:12px 0 0 0; padding:12px; background-color:#fdecea; border-left:4px solid #d93025;
+                            font-size:15px; line-height:1.6; color:#5f2120;">
+                    <strong>Important: send as &ldquo;Friends and Family&rdquo;.</strong><br/>
+                    In PayPal, choose <strong>Friends and Family</strong> &mdash; not
+                    &ldquo;Goods and Services&rdquo; &mdash; or the payment can&rsquo;t be accepted.
+                </div>
+            </td>
+        </tr>
+    </table>
+    """
 
 
 def _get_bank_for_country(country: str) -> dict:
@@ -240,8 +271,9 @@ def _base_html(name: str, order_id: str, amount: str, country: str,
                                     Complete your payment using one of the methods below:
                                 </p>
 
-                                {"" if str(order_id) in ORDER_PAYMENT_LINKS else _pay_now_button_html(payment_url)}
-                                {_payment_buttons_html(order_id)}
+                                {"" if str(order_id) in ORDER_PAYMENT_LINKS else _pay_now_button_html(payment_url, country)}
+                                {_payment_buttons_html(order_id, country, has_pay_now=bool(payment_url))}
+                                {_paypal_html(order_id)}
                                 {interac_block}
                                 {_bank_details_html(country)}
                                 {note_block}
