@@ -7,7 +7,7 @@ Short, personal, no pressure — just a nudge with the offer still available.
 
 CHECKOUT_URL = "https://www.iptvsup.com/checkout/"
 
-ABANDONED_SUBJECT = "You left something behind"
+ABANDONED_SUBJECT = "You left something behind — your IPTVSup plan won't wait long"
 
 
 def get_abandoned_email(

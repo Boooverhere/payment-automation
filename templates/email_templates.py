@@ -320,7 +320,7 @@ def _stage0(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     if kind == "card":
         return {
-            "subject": f"Complete your payment — Order #{order_id}",
+            "subject": f"⏳ Your IPTVSup order is on hold — finish your payment (Order #{order_id})",
             "body": _base_html(
                 name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
                 headline="Finish Your Payment",
@@ -328,7 +328,7 @@ def _stage0(name: str, order_id: str, amount: str, plan: str, country: str,
             )
         }
     return {
-        "subject": f"Your IPTV Sup Invoice — Order #{order_id}",
+        "subject": f"Your IPTVSup Invoice — Order #{order_id} is reserved for you",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Invoice Payment",
@@ -344,7 +344,7 @@ def _stage0(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage1(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Reminder: Your payment for Order #{order_id} is pending",
+        "subject": f"⏳ Reminder: your reserved IPTVSup order #{order_id} is waiting",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Payment Reminder",
@@ -360,7 +360,7 @@ def _stage1(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage2(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Your Order #{order_id} is still unpaid — action needed",
+        "subject": f"Order #{order_id} still unpaid — your reservation won't last",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Payment Still Pending",
@@ -376,7 +376,7 @@ def _stage2(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage3(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Final notice: Order #{order_id} will be cancelled soon",
+        "subject": f"⚠️ Final notice: Order #{order_id} will be cancelled soon",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Final Payment Notice",
@@ -393,7 +393,7 @@ def _stage3(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage4(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Still want your IPTV Sup subscription? Order #{order_id}",
+        "subject": f"Still want IPTVSup? Order #{order_id} is on hold — not for long",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Your Order Is Waiting",
@@ -409,7 +409,7 @@ def _stage4(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage5(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Your Order #{order_id} is still open",
+        "subject": f"Order #{order_id} is still open — but not for much longer",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Order Still Open",
@@ -425,7 +425,7 @@ def _stage5(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage6(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Last chance: Order #{order_id} will be cancelled in 5 days",
+        "subject": f"⚠️ Last chance: Order #{order_id} will be cancelled in 5 days",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Last Chance",
@@ -468,7 +468,7 @@ def get_email_content(stage: int, name: str, amount: str,
 def get_confirmation_email(name: str, order_id: str, amount: str, plan: str) -> dict:
     name_display = name if name else "there"
     return {
-        "subject": f"Payment Confirmed — Order #{order_id} | IPTV Sup",
+        "subject": f"Payment Confirmed — Order #{order_id} | IPTVSup",
         "body": f"""
 <!DOCTYPE html>
 <html lang="en">
