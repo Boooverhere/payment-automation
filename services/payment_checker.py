@@ -16,6 +16,8 @@ from config import (
 
 logger = get_logger(__name__)
 
+FINAL_STAGE = len(REMINDER_HOURS)
+
 
 def _maybe_cancel(worksheet, order_id: str, hours_elapsed: float, dry_run: bool):
     """Cancel in WooCommerce once reminders are done, so unpaid orders don't linger as "processing"."""
@@ -34,7 +36,7 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
     """
     Processes all pending WooCommerce orders:
     - Sends invoice immediately for new orders
-    - Sends reminders at 24h, 48h, 72h
+    - Sends reminders at 24h, 48h, 72h, then day 7, 14 and 25
     - Marks as abandoned after final reminder
     """
 
@@ -89,7 +91,7 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
         # --- New order — not yet in sheet ---
         if order_id not in tracked_ids:
             # A card payment abandoned days ago is stale: don't start emailing now
-            if kind == "card" and hours_elapsed > REMINDER_HOURS[-1]:
+            if kind == "card" and hours_elapsed > 72:
                 logger.info(f"Order {order_id} | Card payment abandoned {hours_elapsed:.0f}h ago — too old to chase")
                 _maybe_cancel(worksheet, order_id, hours_elapsed, dry_run)
                 skipped += 1
@@ -116,8 +118,9 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
         current_stage = int(tracked_row.get(COL_STAGE) or 0)
         status        = str(tracked_row.get(COL_STATUS, "")).lower()
 
-        # Already abandoned — only thing left is cancelling it in WooCommerce
-        if status in ("abandoned", "cancelled"):
+        # All reminders sent — only thing left is cancelling it in WooCommerce.
+        # Rows marked abandoned under the old 72h schedule still get the later reminders.
+        if status == "cancelled" or (status == "abandoned" and current_stage >= FINAL_STAGE):
             logger.info(f"Order {order_id} | Already {status} — no more emails")
             _maybe_cancel(worksheet, order_id, hours_elapsed, dry_run)
             skipped += 1
@@ -136,10 +139,10 @@ def process_orders(worksheet, orders: list[dict], dry_run: bool = False):
             except ValueError:
                 pass  # fall back to order-date-based stage already calculated
 
-        # Mark as abandoned if past 72h since invoice and final reminder already sent
-        if hours_elapsed > 72 and current_stage >= 3:
-            logger.info(f"Order {order_id} | No payment after 72h — marking abandoned")
-            if not dry_run:
+        # Mark as abandoned once the final reminder has gone out
+        if current_stage >= FINAL_STAGE:
+            logger.info(f"Order {order_id} | No payment after final reminder — marking abandoned")
+            if not dry_run and status != "abandoned":
                 update_order_status(worksheet, order_id, "abandoned")
                 time.sleep(1)
             _maybe_cancel(worksheet, order_id, hours_elapsed, dry_run)

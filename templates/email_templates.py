@@ -9,6 +9,9 @@ Stages:
     1 → Reminder 1 (24 hours later)
     2 → Reminder 2 (48 hours later)
     3 → Final reminder (72 hours later)
+    4 → Follow-up (day 7)
+    5 → Follow-up (day 14)
+    6 → Last chance (day 25, order is cancelled on day 30)
 """
 
 from config import (
@@ -384,6 +387,55 @@ def _stage3(name: str, order_id: str, amount: str, plan: str, country: str,
 
 
 # ---------------------------------------------------------------------------
+# Stage 4 — Follow-up (day 7)
+# ---------------------------------------------------------------------------
+
+def _stage4(name: str, order_id: str, amount: str, plan: str, country: str,
+            payment_url: str = "", kind: str = "invoice") -> dict:
+    return {
+        "subject": f"Still want your IPTV Sup subscription? Order #{order_id}",
+        "body": _base_html(
+            name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
+            headline="Your Order Is Waiting",
+            intro=f"We're still holding your order for <strong>{plan}</strong>. Complete your payment below and your login details are sent right away.",
+        )
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stage 5 — Follow-up (day 14)
+# ---------------------------------------------------------------------------
+
+def _stage5(name: str, order_id: str, amount: str, plan: str, country: str,
+            payment_url: str = "", kind: str = "invoice") -> dict:
+    return {
+        "subject": f"Your Order #{order_id} is still open",
+        "body": _base_html(
+            name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
+            headline="Order Still Open",
+            intro=f"Your order for <strong>{plan}</strong> is still open, but we haven't received your payment yet. If you had trouble paying, simply reply to this email and we'll help.",
+        )
+    }
+
+
+# ---------------------------------------------------------------------------
+# Stage 6 — Last chance (day 25; order is cancelled on day 30)
+# ---------------------------------------------------------------------------
+
+def _stage6(name: str, order_id: str, amount: str, plan: str, country: str,
+            payment_url: str = "", kind: str = "invoice") -> dict:
+    return {
+        "subject": f"Last chance: Order #{order_id} will be cancelled in 5 days",
+        "body": _base_html(
+            name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
+            headline="Last Chance",
+            intro=f"Your order for <strong>{plan}</strong> will be cancelled in 5 days if payment is not received. Complete your payment now to keep it.",
+            extra_note="<strong>Important:</strong> This is your last reminder. After 5 days your order is cancelled automatically."
+        )
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main function
 # ---------------------------------------------------------------------------
 
@@ -392,6 +444,9 @@ STAGE_FUNCTIONS = {
     1: _stage1,
     2: _stage2,
     3: _stage3,
+    4: _stage4,
+    5: _stage5,
+    6: _stage6,
 }
 
 

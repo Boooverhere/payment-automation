@@ -85,7 +85,9 @@ WEBHOOK_PORT        = int(os.getenv("WEBHOOK_PORT", "8000"))
 BREVO_API_KEY = os.getenv("BREVO_API_KEY", SMTP_PASSWORD)
 
 # --- Reminder schedule (hours after order) ---
-REMINDER_HOURS = [24, 48, 72]
+# 24h / 48h / 72h, then day 7, 14 and 25 while the order stays open (it is
+# cancelled at CANCEL_UNPAID_AFTER_HOURS).
+REMINDER_HOURS = [24, 48, 72, 7 * 24, 14 * 24, 25 * 24]
 
 # --- Which orders get chased ---
 # Only "Invoice Payment" orders wait for a manual payment. Orders placed with
@@ -105,6 +107,7 @@ ORDER_LOOKBACK_DAYS = 35
 # --- Emails to never send to (add lowercase addresses here) ---
 EXCLUDED_EMAILS = {
     "isaacontheprize@graduate.org",
+    "contact@iptvsup.com",          # owner's own test orders
 }
 
 # --- Sheet column names ---
