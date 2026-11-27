@@ -92,8 +92,9 @@ def _paypal_me_url(amount: str) -> str:
 
 
 def _paypal_primary_html(order_id: str, amount: str) -> str:
-    """US customers: PayPal is the main way to pay (Venmo/Cash App on PayGate make
-    them buy crypto first, and US buyers dropped off there)."""
+    """PayPal is the main way to pay in every country (checkout shows the invoice
+    option as "PayPal"). US customers get only this: Venmo/Cash App on PayGate make
+    them buy crypto first, and US buyers dropped off there."""
     return f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 10px 0;" width="100%">
         <tr>
@@ -117,33 +118,6 @@ def _paypal_primary_html(order_id: str, amount: str) -> str:
                             font-size:15px; line-height:1.6; color:#5f2120;">
                     <strong>Important: choose &ldquo;Friends and Family&rdquo;</strong>, not
                     &ldquo;Goods and Services&rdquo;, or the payment can&rsquo;t be accepted.
-                </div>
-            </td>
-        </tr>
-    </table>
-    """
-
-
-def _paypal_html(order_id: str) -> str:
-    """PayPal section — manual payment to the PayPal username as Friends and Family."""
-    return f"""
-    <table border="0" cellpadding="0" cellspacing="0" role="presentation"
-           style="border:1px solid #e9ecef; border-radius:8px; overflow:hidden; margin:0 0 22px 0;" width="100%">
-        <tr>
-            <td style="padding:14px 12px; background-color:#f8f9fb; border-bottom:1px solid #e9ecef;
-                       font-size:16px; font-weight:700; color:#111111;">
-                Pay with PayPal
-            </td>
-        </tr>
-        <tr>
-            <td style="padding:16px 12px; font-size:15px; line-height:1.8; word-break:break-word;">
-                <strong>Send to:</strong> {PAYPAL_USERNAME}<br/>
-                <strong>Note:</strong> Order #{order_id}
-                <div style="margin:12px 0 0 0; padding:12px; background-color:#fdecea; border-left:4px solid #d93025;
-                            font-size:15px; line-height:1.6; color:#5f2120;">
-                    <strong>Important: send as &ldquo;Friends and Family&rdquo;.</strong><br/>
-                    In PayPal, choose <strong>Friends and Family</strong> &mdash; not
-                    &ldquo;Goods and Services&rdquo; &mdash; or the payment can&rsquo;t be accepted.
                 </div>
             </td>
         </tr>
@@ -315,10 +289,9 @@ def _base_html(name: str, order_id: str, amount: str, country: str,
                                     Complete your payment using one of the methods below:
                                 </p>
 
-                                {_paypal_primary_html(order_id, amount) if is_us else ""}
+                                {_paypal_primary_html(order_id, amount)}
                                 {"" if is_us or str(order_id) in ORDER_PAYMENT_LINKS else _pay_now_button_html(payment_url, country)}
                                 {"" if is_us else _payment_buttons_html(order_id, country, has_pay_now=bool(payment_url))}
-                                {"" if is_us else _paypal_html(order_id)}
                                 {interac_block}
                                 {_bank_details_html(country) if country.upper() == "GB" or country.upper() in EUROPEAN_COUNTRIES else ""}
                                 {note_block}
