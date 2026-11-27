@@ -84,6 +84,46 @@ def _payment_buttons_html(order_id: str = "", country: str = "", has_pay_now: bo
     )
 
 
+def _paypal_me_url(amount: str) -> str:
+    """paypal.me link with the amount filled in, e.g. paypal.me/NajwaBouaziz/111.98USD.
+    Only username, amount and currency: nothing that names the store."""
+    clean = str(amount).replace(",", "").replace("$", "").strip()
+    return f"https://paypal.me/{PAYPAL_USERNAME.lstrip('@')}/{clean}USD"
+
+
+def _paypal_primary_html(order_id: str, amount: str) -> str:
+    """US customers: PayPal is the main way to pay (Venmo/Cash App on PayGate make
+    them buy crypto first, and US buyers dropped off there)."""
+    return f"""
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 10px 0;" width="100%">
+        <tr>
+            <td align="center">
+                <a href="{_paypal_me_url(amount)}" rel="noreferrer" style="display:block; width:100%; max-width:320px; box-sizing:border-box;
+                   background-color:#0070ba; color:#ffffff; text-decoration:none; font-size:17px;
+                   font-weight:bold; padding:15px 20px; border-radius:8px;" target="_blank">
+                   Pay ${amount} with PayPal
+                </a>
+            </td>
+        </tr>
+    </table>
+    <table border="0" cellpadding="0" cellspacing="0" role="presentation"
+           style="border:1px solid #e9ecef; border-radius:8px; overflow:hidden; margin:0 0 22px 0;" width="100%">
+        <tr>
+            <td style="padding:14px 12px; font-size:15px; line-height:1.7; word-break:break-word;">
+                The button opens PayPal with <strong>${amount}</strong> already filled in.<br/>
+                <strong>Send to:</strong> {PAYPAL_USERNAME}<br/>
+                <strong>Note:</strong> Order {order_id}
+                <div style="margin:12px 0 0 0; padding:12px; background-color:#fdecea; border-left:4px solid #d93025;
+                            font-size:15px; line-height:1.6; color:#5f2120;">
+                    <strong>Important: choose &ldquo;Friends and Family&rdquo;</strong>, not
+                    &ldquo;Goods and Services&rdquo;, or the payment can&rsquo;t be accepted.
+                </div>
+            </td>
+        </tr>
+    </table>
+    """
+
+
 def _paypal_html(order_id: str) -> str:
     """PayPal section — manual payment to the PayPal username as Friends and Family."""
     return f"""
@@ -199,6 +239,7 @@ def _base_html(name: str, order_id: str, amount: str, country: str,
     Automatically adds the Interac section for Canadian customers (country == 'CA').
     """
     name_display  = name if name else "there"
+    is_us         = country.upper() == "US"
     interac_block = _interac_html() if country.upper() == "CA" else ""
     note_block    = f"""
     <table border="0" cellpadding="0" cellspacing="0" role="presentation" style="margin:0 0 22px 0;" width="100%">
@@ -274,9 +315,10 @@ def _base_html(name: str, order_id: str, amount: str, country: str,
                                     Complete your payment using one of the methods below:
                                 </p>
 
-                                {"" if str(order_id) in ORDER_PAYMENT_LINKS else _pay_now_button_html(payment_url, country)}
-                                {_payment_buttons_html(order_id, country, has_pay_now=bool(payment_url))}
-                                {_paypal_html(order_id)}
+                                {_paypal_primary_html(order_id, amount) if is_us else ""}
+                                {"" if is_us or str(order_id) in ORDER_PAYMENT_LINKS else _pay_now_button_html(payment_url, country)}
+                                {"" if is_us else _payment_buttons_html(order_id, country, has_pay_now=bool(payment_url))}
+                                {"" if is_us else _paypal_html(order_id)}
                                 {interac_block}
                                 {_bank_details_html(country) if country.upper() == "GB" or country.upper() in EUROPEAN_COUNTRIES else ""}
                                 {note_block}
@@ -320,7 +362,7 @@ def _stage0(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     if kind == "card":
         return {
-            "subject": f"⏳ Your IPTVSup order is on hold — finish your payment (Order #{order_id})",
+            "subject": f"⏳ Your IPTVSup order is on hold, finish your payment (Order #{order_id})",
             "body": _base_html(
                 name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
                 headline="Finish Your Payment",
@@ -328,7 +370,7 @@ def _stage0(name: str, order_id: str, amount: str, plan: str, country: str,
             )
         }
     return {
-        "subject": f"Your IPTVSup Invoice — Order #{order_id} is reserved for you",
+        "subject": f"Your IPTVSup Invoice: Order #{order_id} is reserved for you",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Invoice Payment",
@@ -360,7 +402,7 @@ def _stage1(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage2(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Order #{order_id} still unpaid — your reservation won't last",
+        "subject": f"Order #{order_id} still unpaid, your reservation won't last",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Payment Still Pending",
@@ -393,7 +435,7 @@ def _stage3(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage4(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Still want IPTVSup? Order #{order_id} is on hold — not for long",
+        "subject": f"Still want IPTVSup? Order #{order_id} is on hold, not for long",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Your Order Is Waiting",
@@ -409,7 +451,7 @@ def _stage4(name: str, order_id: str, amount: str, plan: str, country: str,
 def _stage5(name: str, order_id: str, amount: str, plan: str, country: str,
             payment_url: str = "", kind: str = "invoice") -> dict:
     return {
-        "subject": f"Order #{order_id} is still open — but not for much longer",
+        "subject": f"Order #{order_id} is still open, but not for much longer",
         "body": _base_html(
             name=name, order_id=order_id, amount=amount, country=country, payment_url=payment_url,
             headline="Order Still Open",
@@ -468,7 +510,7 @@ def get_email_content(stage: int, name: str, amount: str,
 def get_confirmation_email(name: str, order_id: str, amount: str, plan: str) -> dict:
     name_display = name if name else "there"
     return {
-        "subject": f"Payment Confirmed — Order #{order_id} | IPTVSup",
+        "subject": f"Payment Confirmed: Order #{order_id} | IPTVSup",
         "body": f"""
 <!DOCTYPE html>
 <html lang="en">
